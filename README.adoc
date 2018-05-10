@@ -8,12 +8,12 @@ This library allows to connect to a server using SignalR protocol.
 `go get` the package:
 [source, bash]
 ----
-$ go get github.com/thebotguys/signalr
+$ go get github.com/norand94/signalr
 ----
 Then import it in your code:
 [source, go]
 ----
-import "github.com/thebotguys/signalr"
+import "github.com/norand94/signalr"
 ----
 
 == Usage
