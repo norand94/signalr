@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -34,6 +35,7 @@ type Client struct {
 	nextId              int
 
 	// Futures for server call responses and a guarding mutex.
+	proxyUrl        *url.URL
 	responseFutures map[string]chan *serverMessage
 	mutex           sync.Mutex
 	dispatchRunning bool
@@ -70,7 +72,7 @@ func negotiate(scheme, address string) (negotiationResponse, error) {
 	}
 }
 
-func connectWebsocket(address string, params negotiationResponse, hubs []string) (*websocket.Conn, error) {
+func connectWebsocket(address string, params negotiationResponse, hubs []string, proxyURL *url.URL) (*websocket.Conn, error) {
 	var connectionData = make([]struct {
 		Name string `json:"Name"`
 	}, len(hubs))
@@ -91,7 +93,15 @@ func connectWebsocket(address string, params negotiationResponse, hubs []string)
 	var connectionUrl = url.URL{Scheme: "wss", Host: address, Path: "signalr/connect"}
 	connectionUrl.RawQuery = connectionParameters.Encode()
 
-	if conn, _, err := websocket.DefaultDialer.Dial(connectionUrl.String(), nil); err != nil {
+	dialer := websocket.Dialer{
+		HandshakeTimeout: time.Second * 45,
+	}
+
+	if proxyURL != nil {
+		dialer.Proxy = http.ProxyURL(proxyURL)
+	}
+
+	if conn, _, err := dialer.Dial(connectionUrl.String(), nil); err != nil {
 		return nil, err
 	} else {
 		return conn, nil
@@ -251,7 +261,7 @@ func (self *Client) Connect(scheme, host string, hubs []string) error {
 	}
 
 	// Connect Websocket.
-	if ws, err := connectWebsocket(host, self.params, hubs); err != nil {
+	if ws, err := connectWebsocket(host, self.params, hubs, self.proxyUrl); err != nil {
 		return err
 	} else {
 		self.socket = ws
@@ -268,9 +278,10 @@ func (self *Client) Close() {
 	self.socket.Close()
 }
 
-func NewWebsocketClient() *Client {
+func NewWebsocketClient(url *url.URL) *Client {
 	return &Client{
 		nextId:          1,
 		responseFutures: make(map[string]chan *serverMessage),
+		proxyUrl:        url,
 	}
 }
