@@ -20,8 +20,15 @@ import "github.com/thebotguys/signalr"
 First of all create a client:
 [source, go]
 ----
-client := signalr.NewWebsocketClient()
+client := signalr.NewWebsocketClient(nil)
 ----
+
+If you want to use proxy
+[source, go]
+----
+client := signalr.NewWebsocketClient(url)
+----
+
 Assign some functions:
 [source, go]
 ----
